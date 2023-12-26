@@ -1,0 +1,153 @@
+alias: CoffeTracker
+description: Count amount of coffe brewings per day
+trigger:
+  - platform: time
+    at: "00:00:00"
+    id: id:reset
+    alias: Trigger on new day, Reset counter id:reset
+  - alias: Trigger when boiling id:boiling
+    platform: state
+    entity_id:
+      - binary_sensor.kaffebryggning
+    to: "on"
+    from: "off"
+    id: id:boiling
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+  - platform: state
+    entity_id:
+      - binary_sensor.kaffebryggning
+    to: "off"
+    from: "on"
+    alias: Trigger when boiling is done id:boilingdone
+    id: id:boilingdone
+condition: []
+action:
+  - variables:
+      counter_helper_eid: counter.kaffebryggningar
+      boils_today: "{{ states(counter_helper_eid) }}"
+      boil_start: |
+        {{ 
+            as_timestamp(trigger.from_state.last_changed 
+            if trigger is defined and trigger.to_state is defined
+            else now() - timedelta(minutes=1))
+        }}
+      boil_end: |
+        {{ 
+            as_timestamp(trigger.to_state.last_changed 
+            if trigger is defined and trigger.to_state is defined
+            else now())
+        }}
+      boil_delta: |
+        {# Time difference in seconds #}
+        {{ (boil_end - boil_start) }}
+      boil_tpc: |
+        {# 175s for 3 cups #}
+        {# tpc = time boiled per cup in seconds #}
+        {{ 175 / 3 }}
+      boil_cups: |
+        {# Cups estimated #}
+        {{ (boil_delta / boil_tpc)|round(0) }}
+      txt_delim: "|"
+      txt_size: 17
+      txt_font_header: ../../media/fonts/GothamRnd-Bold.ttf
+      txt_font: ../../media/fonts/Bahnschrift-Bold-Condensed.ttf
+      txt_offset: "{{ txt_size + 2 }}"
+      txt_color: black
+      txt_x: 95
+      txt_y: 5
+      texts:
+        title1: "No. of Brewings:"
+        title2: "Last Brew start:"
+        title3: "Last Brew servings:"
+        value1: |
+          {{ boils_today|string + " st" }}
+        value2: |
+          {{ (boil_start - 60)|timestamp_custom('%Y-%m-%d %H:%M') }}
+        value3: |
+          {{ 
+            (boil_cups|string + " cup" + ("" if boil_cups == 1 else "s")) if trigger.id == "id:boilingdone" else
+            "Brewing in progress..." if trigger.id == "id:boiling" else
+            "-"
+          }}
+    alias: Define variables
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - id:reset
+        sequence:
+          - service: counter.reset
+            target:
+              entity_id: "{{ counter_helper_eid }}"
+            data: {}
+        alias: När den utlöses av id:reset
+      - conditions:
+          - alias: Update counter
+            condition: trigger
+            id:
+              - id:boiling
+        sequence:
+          - service: counter.increment
+            target:
+              entity_id: "{{ counter_helper_eid }}"
+            data: {}
+        alias: När den utlöses av id:boiling
+      - conditions:
+          - condition: trigger
+            id:
+              - id:boilingdone
+        sequence: []
+  - service: open_epaper_link.drawcustom
+    target:
+      entity_id: open_epaper_link.0000021f76bb3b14
+    data:
+      background: white
+      dry-run: false
+      payload:
+        - type: icon
+          value: coffee-maker
+          x: 50
+          "y": 64
+          size: 100
+          color: red
+          anchor: mm
+        - type: multiline
+          value: |
+            {{
+              texts.title1 + txt_delim + txt_delim +          
+              texts.title2 + txt_delim + txt_delim +
+              texts.title3
+            }}
+          delimiter: "{{txt_delim}}"
+          font: "{{ txt_font_header }}"
+          offset_y: "{{txt_offset}}"
+          x: "{{ txt_x }}"
+          start_y: "{{ txt_y }}"
+          size: "{{txt_size}}"
+          color: "{{ txt_color }}"
+        - type: multiline
+          value: |
+            {{
+              txt_delim + 
+              texts.value1 + txt_delim + txt_delim + 
+              texts.value2 + txt_delim + txt_delim +
+              texts.value3
+            }}
+          delimiter: "{{txt_delim}}"
+          font: "{{txt_font}}"
+          offset_y: "{{txt_offset}}"
+          x: "{{ txt_x }}"
+          start_y: "{{ txt_y }}"
+          size: "{{txt_size}}"
+          color: "{{ txt_color }}"
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+    alias: Anti-Spam timer
+mode: queued
+max: 2
