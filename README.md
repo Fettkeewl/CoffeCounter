@@ -38,3 +38,6 @@ Monitor your power plug and watch how long it takes for
 <br>it to brew a serving (# of cups) of choice then calculate the 
 <br>"time per cups" in seconds.
 <br>Edit variable <b>boil_tpc</b> to your calculated time per cups
+<br>
+<br>Make sure to download the fonts or edit the variables to your own fonts and 
+<br>their respective paths
