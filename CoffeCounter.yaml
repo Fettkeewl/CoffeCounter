@@ -84,7 +84,7 @@ action:
             target:
               entity_id: "{{ counter_helper_eid }}"
             data: {}
-        alias: När den utlöses av id:reset
+        alias: When triggered by id:reset
       - conditions:
           - alias: Update counter
             condition: trigger
@@ -95,7 +95,7 @@ action:
             target:
               entity_id: "{{ counter_helper_eid }}"
             data: {}
-        alias: När den utlöses av id:boiling
+        alias: When triggered by id:boiling
       - conditions:
           - condition: trigger
             id:
