@@ -65,7 +65,8 @@ action:
         value1: |
           {{ boils_today|string + " st" }}
         value2: |
-          {{ (boil_start - 60)|timestamp_custom('%Y-%m-%d %H:%M') }}
+          {# Note that the "for"-time in trigger id:boiling is deducted from the start time #}
+          {{ (boil_start - 60)|timestamp_custom('%Y-%m-%d %H:%M') if trigger.id != "id:reset" else "-" }}
         value3: |
           {{ 
             (boil_cups|string + " cup" + ("" if boil_cups == 1 else "s")) if trigger.id == "id:boilingdone" else
